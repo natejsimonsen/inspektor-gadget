@@ -891,8 +891,6 @@ jobs:
           IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           DIGEST_AMD64: ${{ needs.build-gadget-container-images.outputs.digest-amd64 }}
           DIGEST_ARM64: ${{ needs.build-gadget-container-images.outputs.digest-arm64 }}
-          SBOM_DIGEST_AMD64: ${{ needs.build-gadget-container-images.outputs.sbom-digest-amd64 }}
-          SBOM_DIGEST_ARM64: ${{ needs.build-gadget-container-images.outputs.sbom-digest-arm64 }}
         run: |
           IMAGE_REF="${CONTAINER_REPO}:${IMAGE_TAG}"
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
@@ -909,9 +907,7 @@ jobs:
               --annotation index:org.opencontainers.image.source="$IMAGE_SOURCE" \
               --annotation index:org.opencontainers.image.title="$IMAGE_TITLE" \
               "${CONTAINER_REPO}@${DIGEST_AMD64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_AMD64}" \
-              "${CONTAINER_REPO}@${DIGEST_ARM64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_ARM64}"
+              "${CONTAINER_REPO}@${DIGEST_ARM64}"
 
           image_digest=$(docker buildx imagetools inspect --format '{{json .Manifest.Digest}}' $IMAGE_REF | jq -r)
           echo "image-digest=${image_digest}" >> $GITHUB_OUTPUT
@@ -922,6 +918,20 @@ jobs:
           password: '${{ secrets.COSIGN_PASSWORD }}'
           private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
+      - name: Sign the SBOM (amd64)
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: ./.github/actions/sign-container-image
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.sbom-digest-amd64 }}"
+      - name: Sign the SBOM (arm64)
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: ./.github/actions/sign-container-image
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-gadget-container-images.outputs.sbom-digest-arm64 }}"
 
   publish-ig-images-manifest:
     name: Publish ig img manifest
@@ -961,8 +971,6 @@ jobs:
           IMAGE_TAG: ${{ steps.set-repo-determine-image-tag.outputs.image-tag }}
           DIGEST_AMD64: ${{ needs.build-ig-container-images.outputs.digest-amd64 }}
           DIGEST_ARM64: ${{ needs.build-ig-container-images.outputs.digest-arm64 }}
-          SBOM_DIGEST_AMD64: ${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }}
-          SBOM_DIGEST_ARM64: ${{ needs.build-ig-container-images.outputs.sbom-digest-arm64 }}
         run: |
           IMAGE_REF="${CONTAINER_REPO}:${IMAGE_TAG}"
           IMAGE_SOURCE="https://github.com/inspektor-gadget/inspektor-gadget"
@@ -974,9 +982,7 @@ jobs:
           docker buildx imagetools create \
             -t "$IMAGE_REF" \
               "${CONTAINER_REPO}@${DIGEST_AMD64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_AMD64}" \
               "${CONTAINER_REPO}@${DIGEST_ARM64}" \
-              "${CONTAINER_REPO}@${SBOM_DIGEST_ARM64}" \
             --annotation index:org.opencontainers.image.documentation="$IMAGE_DOCUMENTATION" \
             --annotation index:org.opencontainers.image.description="$IMAGE_DESCRIPTION" \
             --annotation index:org.opencontainers.image.licenses="$IMAGE_LICENSES" \
@@ -992,6 +998,20 @@ jobs:
           password: '${{ secrets.COSIGN_PASSWORD }}'
           private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
           image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ steps.publish-manifest-list.outputs.image-digest }}"
+      - name: Sign the SBOM (amd64)
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: ./.github/actions/sign-container-image
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-amd64 }}"
+      - name: Sign the SBOM (arm64)
+        if: needs.check-secrets.outputs.cosign == 'true'
+        uses: ./.github/actions/sign-container-image
+        with:
+          password: '${{ secrets.COSIGN_PASSWORD }}'
+          private_key: '${{ secrets.COSIGN_PRIVATE_KEY }}'
+          image: "${{ steps.set-repo-determine-image-tag.outputs.container-repo }}@${{ needs.build-ig-container-images.outputs.sbom-digest-arm64 }}"
 
   build-helper-images:
     # level: 2
